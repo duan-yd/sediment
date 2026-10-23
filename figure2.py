@@ -68,7 +68,7 @@ def _read_conditional_p(env_row):
 
 
 def main():
-    d = Delivery(2, __file__, default_output_name="Figure2_revised_v2")
+    d = Delivery(2, __file__)
     scores = d.read(P + "layer_PCoA_scores.tsv", "A–C", "Existing 36-layer Bray–Curtis PCoA scores")
     per = d.read(P + "Fig3B_PERMANOVA.tsv", "A–C", "Existing partial R² and BH q values; no new test")
     corr = d.read(P + "Fig3C_cross_layer_associations.tsv", "D", "Existing 12-core Mantel and PROTEST results")
