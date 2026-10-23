@@ -7,7 +7,12 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-ROOT = Path(__file__).resolve().parents[3]
+# Full analysis checkouts keep scripts several levels below the project root;
+# the lightweight delivery checkout places them directly under ``sediment``.
+# Preserve the former root when available and avoid an import-time IndexError
+# in the latter layout.
+_HERE = Path(__file__).resolve()
+ROOT = _HERE.parents[3] if len(_HERE.parents) > 3 else _HERE.parents[1]
 P='04_results/processed/figures2_6_curated_v13/'
 V='04_results/processed/figures3_5_v18/'
 W='04_results/processed/figures3_5_refined_v29/'
@@ -26,10 +31,10 @@ def sha(path):
         for b in iter(lambda:f.read(1048576),b''):h.update(b)
     return h.hexdigest()
 class Delivery:
-    def __init__(self,number,script):
+    def __init__(self,number,script,default_output_name=None):
         self.n=number;self.inputs={};self.mapping=[];self.script=Path(script)
         parser=argparse.ArgumentParser(description=f'Replot Figure {number} from existing results only.')
-        parser.add_argument('--out',type=Path,default=ROOT/f'05_figures/science_questions_20261013_final/Figure{number}')
+        parser.add_argument('--out',type=Path,default=ROOT/f'05_figures/science_questions_20261013_final/{default_output_name or f"Figure{number}"}')
         parser.add_argument('--replace',action='store_true',help='Replace generated outputs only, after archiving the previous edition.')
         args=parser.parse_args();self.out=args.out.resolve();self.replace=args.replace
         if self.out.exists() and not self.replace:raise FileExistsError(f'Refusing to overwrite: {self.out}. Archive old outputs and use --replace, or use a new --out.')

@@ -80,9 +80,16 @@ def main():
     scores["_display_profile"] = scores["Profile"].map(_profile_name)
     if set(expected_pct) - set(scores["_display_profile"]):
         raise ValueError(f"PCoA profile labels do not contain the expected layers: {sorted(scores['_display_profile'].unique())!r}")
+    axis_pct_differences = {}
     for profile, (axis1, axis2) in expected_pct.items():
         z = scores[scores["_display_profile"].eq(profile)]
-        if not np.allclose(z["Axis1_pct"], axis1) or not np.allclose(z["Axis2_pct"], axis2):
+        # The documented percentages are printed to two decimals. Compare at
+        # that reporting precision so harmless floating-point/rounding noise
+        # does not abort plotting, while still rejecting a real source mismatch.
+        axis1_diff = float(np.max(np.abs(z["Axis1_pct"].to_numpy(dtype=float) - axis1)))
+        axis2_diff = float(np.max(np.abs(z["Axis2_pct"].to_numpy(dtype=float) - axis2)))
+        axis_pct_differences[profile] = {"PCoA1_max_abs_diff": axis1_diff, "PCoA2_max_abs_diff": axis2_diff}
+        if axis1_diff > 0.01 or axis2_diff > 0.01:
             raise ValueError(f"{profile} axis percentages differ from documented values: {z[['Axis1_pct', 'Axis2_pct']].drop_duplicates().to_dict('records')}")
 
     for name in ["Mantel_r", "Procrustes_r", "Mantel_q", "Procrustes_q"]:
@@ -236,7 +243,7 @@ def main():
     legend_en = ("Cross-level organization of microbial communities and functions. (A–C) Existing Bray–Curtis PCoA coordinates for 36 stratified samples nested within 12 sediment cores. Colours indicate February, May, August and November; point shapes indicate 0–30, 30–60 and 60–90 cm. Axis percentages and coordinates are read unchanged from the curated score table. The point clouds are descriptive; no new ellipse, cluster boundary or significance claim is added. (D) Existing correspondence statistics for Taxonomy–KEGG, Taxonomy–Nutrient markers and KEGG–Nutrient markers using 12 equal-weight core profiles. Filled circles are Mantel r and open circles are two-dimensional PROTEST r. BH-adjusted q values are in a separate aligned column, and within-month permutation Mantel and PROTEST P values are in the lower table. (E) Existing adjusted R² for models using OM, TN, TP and pH, shown overall and conditioned on sampling month. The connector is a visual aid; the two endpoints remain separate model estimates. Overall KEGG q = 0.0159; month-conditioned KEGG P = 0.0694. Water level is not included in the current model.")
     legend_cn = ("跨层级微生物群落与功能组织。A–C直接使用36个分层样品的Bray–Curtis PCoA坐标，样品嵌套于12根沉积柱；颜色为February、May、August和November，形状为0–30、30–60和60–90 cm。坐标解释率与点位来自原始结果表，未添加椭圆、聚类边界或新的显著性推断。D使用12根柱的等权核心剖面展示Taxonomy–KEGG、Taxonomy–Nutrient markers和KEGG–Nutrient markers对应关系，实心点为Mantel r，空心点为二维PROTEST r；BH校正q值独立列出，采样月份内限制置换的Mantel与PROTEST P值置于下方表格。E展示使用OM、TN、TP和pH的整体及控制采样月份后的调整R²；连接线只用于视觉比较，两个端点仍是分别的模型估计。总体KEGG q=0.0159，控制月份后KEGG P=0.0694，水位未纳入当前模型。")
     changes = ("Fig.2 revised/v2：A–C统一为等尺寸PCoA面板，顶部只保留一份月份与深度图例；移除过大的整图标题。D改为0–1横向效应量点图，Mantel r使用实心圆、PROTEST r使用空心圆，Mantel/PROTEST BH q值置于右侧独立对齐列，within-month置换P值置于下方小表。E用连接线展示整体与月份条件化调整R²，取消漂浮星号，并在对应KEGG点旁保留q=0.0159与P=0.0694。全部数值直接读取已有结果表；未运行新检验。")
-    checks = {"PCoA_points_per_profile": {k: int((scores["_display_profile"] == k).sum()) for k in expected_pct}, "PCoA_axis_percentages_verified": True, "D_pairs": len(rows), "D_q_values_from_source": True, "D_within_month_P_values_from_source": True, "E_overall_KEGG_q": overall_kegg_q, "E_month_conditioned_KEGG_P": conditional_kegg_p, "E_conditional_P_source": conditional_p_source, "supported_PERMANOVA_annotations": supported_terms, "new_tests": False}
+    checks = {"PCoA_points_per_profile": {k: int((scores["_display_profile"] == k).sum()) for k in expected_pct}, "PCoA_axis_percentages_verified": True, "PCoA_axis_percentage_max_abs_differences": axis_pct_differences, "D_pairs": len(rows), "D_q_values_from_source": True, "D_within_month_P_values_from_source": True, "E_overall_KEGG_q": overall_kegg_q, "E_month_conditioned_KEGG_P": conditional_kegg_p, "E_conditional_P_source": conditional_p_source, "supported_PERMANOVA_annotations": supported_terms, "new_tests": False}
 
     fd, tmp_svg_name = tempfile.mkstemp(prefix="figure2_", suffix=".svg")
     os.close(fd)
